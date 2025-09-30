@@ -32,8 +32,19 @@ docker compose up --build
 
 ## Bot features
 
-1. `/set-bookmark-emoji` lets you select the emoji used to bookmark messages.
-2. Reacting with the registered emoji forwards the message (and attachment URLs) to your DM.
+1. `/set-bookmark-emoji` lets you select one or more emojis (comma or space separated) used to bookmark messages and optionally choose a hex embed color.
+2. Reacting with any registered emoji forwards the message (and attachment URLs) to your DM inside an embed that honours your color preference.
 3. The forwarded DM includes a Close button. Press it to delete the DM.
 
 The bot registers the slash command automatically when it starts, so no additional registration command is required.
+
+### Command usage
+
+Use the following format when customising the bookmark behaviour:
+
+```
+/set-bookmark-emoji emoji:"📚 🔖" color:#ffcc00
+```
+
+- Provide one or more emojis separated by spaces or commas. Custom server emojis are supported as usual (e.g. `<:name:123456>`).
+- The optional `color` argument accepts a 6-digit hex value with or without `#`/`0x` prefixes. Leave it out to fall back to the bot default.
