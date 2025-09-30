@@ -2,30 +2,37 @@ package store
 
 import "sync"
 
+// UserPreferences stores the emoji and presentation configuration for a user.
+type UserPreferences struct {
+	Emojis   []string
+	Color    int
+	HasColor bool
+}
+
 // EmojiStore provides thread-safe storage for user specific emoji preferences.
 type EmojiStore struct {
-	mu     sync.RWMutex
-	emojis map[string]string
+	mu    sync.RWMutex
+	prefs map[string]UserPreferences
 }
 
 // NewEmojiStore initializes an empty EmojiStore.
 func NewEmojiStore() *EmojiStore {
 	return &EmojiStore{
-		emojis: make(map[string]string),
+		prefs: make(map[string]UserPreferences),
 	}
 }
 
-// Set associates an emoji with a given user ID.
-func (s *EmojiStore) Set(userID, emoji string) {
+// Set associates emoji preferences with a given user ID.
+func (s *EmojiStore) Set(userID string, prefs UserPreferences) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.emojis[userID] = emoji
+	s.prefs[userID] = prefs
 }
 
-// Get retrieves the emoji associated with the user ID, if any.
-func (s *EmojiStore) Get(userID string) (string, bool) {
+// Get retrieves the preferences associated with the user ID, if any.
+func (s *EmojiStore) Get(userID string) (UserPreferences, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	emoji, ok := s.emojis[userID]
-	return emoji, ok
+	prefs, ok := s.prefs[userID]
+	return prefs, ok
 }

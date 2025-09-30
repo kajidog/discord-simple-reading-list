@@ -10,6 +10,8 @@ import (
 	"github.com/example/discord-simple-reading-list/internal/store"
 )
 
+const defaultEmbedColor = 0x5865F2
+
 // ReactionHandler sends a direct message when a user reacts with their registered emoji.
 type ReactionHandler struct {
 	store *store.EmojiStore
@@ -30,8 +32,8 @@ func (h *ReactionHandler) Handle(s *discordgo.Session, event *discordgo.MessageR
 		return
 	}
 
-	emoji, ok := h.store.Get(event.UserID)
-	if !ok {
+	prefs, ok := h.store.Get(event.UserID)
+	if !ok || len(prefs.Emojis) == 0 {
 		return
 	}
 
@@ -40,7 +42,7 @@ func (h *ReactionHandler) Handle(s *discordgo.Session, event *discordgo.MessageR
 		reactionID = event.Emoji.Name
 	}
 
-	if reactionID != emoji {
+	if !emojiMatches(prefs.Emojis, reactionID) {
 		return
 	}
 
@@ -58,9 +60,15 @@ func (h *ReactionHandler) Handle(s *discordgo.Session, event *discordgo.MessageR
 		return
 	}
 
-	content := buildForwardedMessageContent(msg, channelName)
+	color := prefs.Color
+	if !prefs.HasColor {
+		color = defaultEmbedColor
+	}
+
+	jumpURL := buildJumpLink(event.GuildID, event.ChannelID, event.MessageID)
+	embed := buildForwardedMessageEmbed(msg, channelName, jumpURL, color)
 	_, err = s.ChannelMessageSendComplex(dmChannel.ID, &discordgo.MessageSend{
-		Content: content,
+		Embeds: []*discordgo.MessageEmbed{embed},
 		Components: []discordgo.MessageComponent{
 			discordgo.ActionsRow{
 				Components: []discordgo.MessageComponent{
@@ -96,24 +104,68 @@ func fetchChannelName(s *discordgo.Session, channelID string) string {
 	return channelID
 }
 
-func buildForwardedMessageContent(msg *discordgo.Message, channelName string) string {
-	var builder strings.Builder
-	builder.WriteString("**Saved message**\n")
-	builder.WriteString(fmt.Sprintf("Author: %s\n", msg.Author.Username))
-	builder.WriteString(fmt.Sprintf("Channel: #%s\n\n", channelName))
+func buildForwardedMessageEmbed(msg *discordgo.Message, channelName, jumpURL string, color int) *discordgo.MessageEmbed {
+	embed := &discordgo.MessageEmbed{
+		Title: "Saved message",
+		Color: color,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Author",
+				Value:  msg.Author.String(),
+				Inline: true,
+			},
+			{
+				Name:   "Channel",
+				Value:  fmt.Sprintf("#%s", channelName),
+				Inline: true,
+			},
+		},
+	}
 
 	if msg.Content != "" {
-		builder.WriteString(msg.Content)
-		builder.WriteString("\n")
+		embed.Description = msg.Content
+	}
+
+	if jumpURL != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Jump to message",
+			Value: fmt.Sprintf("[Open original message](%s)", jumpURL),
+		})
 	}
 
 	if len(msg.Attachments) > 0 {
-		builder.WriteString("\nAttachments:\n")
+		var attachments []string
 		for _, attachment := range msg.Attachments {
-			builder.WriteString(attachment.URL)
-			builder.WriteString("\n")
+			name := attachment.Filename
+			if name == "" {
+				name = attachment.URL
+			}
+			attachments = append(attachments, fmt.Sprintf("[%s](%s)", name, attachment.URL))
+		}
+
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Attachments",
+			Value: strings.Join(attachments, "\n"),
+		})
+	}
+
+	return embed
+}
+
+func emojiMatches(emojis []string, value string) bool {
+	for _, emoji := range emojis {
+		if emoji == value {
+			return true
 		}
 	}
 
-	return strings.TrimSpace(builder.String())
+	return false
+}
+
+func buildJumpLink(guildID, channelID, messageID string) string {
+	if guildID == "" {
+		return fmt.Sprintf("https://discord.com/channels/@me/%s/%s", channelID, messageID)
+	}
+
+	return fmt.Sprintf("https://discord.com/channels/%s/%s/%s", guildID, channelID, messageID)
 }
