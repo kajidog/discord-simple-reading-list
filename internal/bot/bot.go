@@ -16,7 +16,7 @@ type Bot struct {
 	session        *discordgo.Session
 	config         *config.Config
 	store          *store.EmojiStore
-	registerCmd    *commands.SetBookmarkEmojiCommand
+	registerCmd    *commands.SetBookmarkCommand
 	reactionHandle *handlers.ReactionHandler
 	commandIDs     []string
 }
@@ -29,7 +29,7 @@ func New(cfg *config.Config) (*Bot, error) {
 	}
 
 	emojiStore := store.NewEmojiStore()
-	registerCommand := commands.NewSetBookmarkEmojiCommand(emojiStore)
+	registerCommand := commands.NewSetBookmarkCommand(emojiStore)
 	reactionHandler := handlers.NewReactionHandler(emojiStore)
 
 	b := &Bot{
@@ -94,7 +94,7 @@ func (b *Bot) registerCommands() error {
 func (b *Bot) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		if i.ApplicationCommandData().Name == commands.SetBookmarkEmojiCommandName {
+		if i.ApplicationCommandData().Name == commands.SetBookmarkCommandName {
 			if err := b.registerCmd.Handle(s, i); err != nil {
 				log.Printf("failed to handle register command: %v", err)
 			}

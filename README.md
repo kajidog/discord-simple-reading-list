@@ -1,6 +1,6 @@
 # Discord Message Saver Bot
 
-This project is a Discord bot built with Go and [discordgo](https://github.com/bwmarrin/discordgo). Users choose an emoji via a slash command and, when they react to a message with that emoji, the bot forwards the message to their DM with a Close button. Pressing Close removes the forwarded message.
+This project is a Discord bot built with Go and [discordgo](https://github.com/bwmarrin/discordgo). Users can associate multiple emojis with different bookmark modes and, when they react to a message with one of those emojis, the bot forwards the message to their DM with the appropriate layout and controls.
 
 ## Requirements
 
@@ -32,9 +32,9 @@ docker compose up --build
 
 ## Bot features
 
-1. `/set-bookmark-emoji` lets you select one or more emojis (comma or space separated) used to bookmark messages and optionally choose a hex embed color.
-2. Reacting with any registered emoji forwards the message (and attachment URLs) to your DM inside an embed that honours your color preference.
-3. The forwarded DM includes a Close button. Press it to delete the DM.
+1. `/set-bookmark` lets you choose an emoji, assign it to one of three bookmark modes, and optionally pick an embed color.
+2. Reacting with any registered emoji forwards the message to your DM using the configured mode (lightweight, balanced, or complete).
+3. Saved messages include mode-specific action buttons such as ✅ 完了, 🗑️ 削除, and 🔗 元メッセージ.
 
 The bot registers the slash command automatically when it starts, so no additional registration command is required.
 
@@ -43,8 +43,11 @@ The bot registers the slash command automatically when it starts, so no addition
 Use the following format when customising the bookmark behaviour:
 
 ```
-/set-bookmark-emoji emoji:"📚 🔖" color:#ffcc00
+/set-bookmark emoji:👀 mode:lightweight color:#FFD700
+/set-bookmark emoji:🔖 mode:balanced
+/set-bookmark emoji:📌 mode:complete color:#FF6B6B
 ```
 
-- Provide one or more emojis separated by spaces or commas. Custom server emojis are supported as usual (e.g. `<:name:123456>`).
+- Provide exactly one emoji per command execution. Custom server emojis are supported as usual (e.g. `<:name:123456>`).
+- Choose between `lightweight`, `balanced`, or `complete` for the `mode` option.
 - The optional `color` argument accepts a 6-digit hex value with or without `#`/`0x` prefixes. Leave it out to fall back to the bot default.

@@ -10,30 +10,41 @@ import (
 	"github.com/example/discord-simple-reading-list/internal/store"
 )
 
-// SetBookmarkEmojiCommandName identifies the slash command for selecting the bookmark reaction emoji.
-const SetBookmarkEmojiCommandName = "set-bookmark-emoji"
+// SetBookmarkCommandName identifies the slash command for selecting the bookmark reaction emoji and mode.
+const SetBookmarkCommandName = "set-bookmark"
 
-// SetBookmarkEmojiCommand handles the `/set-bookmark-emoji` slash command lifecycle.
-type SetBookmarkEmojiCommand struct {
+// SetBookmarkCommand handles the `/set-bookmark` slash command lifecycle.
+type SetBookmarkCommand struct {
 	store *store.EmojiStore
 }
 
-// NewSetBookmarkEmojiCommand constructs a new SetBookmarkEmojiCommand.
-func NewSetBookmarkEmojiCommand(store *store.EmojiStore) *SetBookmarkEmojiCommand {
-	return &SetBookmarkEmojiCommand{store: store}
+// NewSetBookmarkCommand constructs a new SetBookmarkCommand.
+func NewSetBookmarkCommand(store *store.EmojiStore) *SetBookmarkCommand {
+	return &SetBookmarkCommand{store: store}
 }
 
 // Definition returns the discordgo.ApplicationCommand definition for registration.
-func (c *SetBookmarkEmojiCommand) Definition() *discordgo.ApplicationCommand {
+func (c *SetBookmarkCommand) Definition() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Name:        SetBookmarkEmojiCommandName,
-		Description: "Choose the emoji used to save messages to your DM",
+		Name:        SetBookmarkCommandName,
+		Description: "Choose how each emoji saves messages to your DM",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "emoji",
-				Description: "Emoji (or emojis separated by spaces or commas) to watch for when you react to a message",
+				Description: "Emoji to watch for when you react to a message",
 				Required:    true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "mode",
+				Description: "Save mode: lightweight, balanced, or complete",
+				Required:    true,
+				Choices: []*discordgo.ApplicationCommandOptionChoice{
+					{Name: "👀 Lightweight", Value: string(store.ModeLightweight)},
+					{Name: "🔖 Balanced", Value: string(store.ModeBalanced)},
+					{Name: "📌 Complete", Value: string(store.ModeComplete)},
+				},
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
@@ -46,7 +57,7 @@ func (c *SetBookmarkEmojiCommand) Definition() *discordgo.ApplicationCommand {
 }
 
 // Handle executes the command when invoked by a user.
-func (c *SetBookmarkEmojiCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	if i.Type != discordgo.InteractionApplicationCommand {
 		return nil
 	}
@@ -58,11 +69,14 @@ func (c *SetBookmarkEmojiCommand) Handle(s *discordgo.Session, i *discordgo.Inte
 
 	var rawEmoji string
 	var rawColor string
+	var rawMode string
 
 	for _, option := range options {
 		switch option.Name {
 		case "emoji":
 			rawEmoji = strings.TrimSpace(option.StringValue())
+		case "mode":
+			rawMode = strings.TrimSpace(option.StringValue())
 		case "color":
 			rawColor = strings.TrimSpace(option.StringValue())
 		}
@@ -72,19 +86,34 @@ func (c *SetBookmarkEmojiCommand) Handle(s *discordgo.Session, i *discordgo.Inte
 		return fmt.Errorf("emoji option is required")
 	}
 
-	emojiTokens := splitEmojiInput(rawEmoji)
-	if len(emojiTokens) == 0 {
-		return fmt.Errorf("please provide at least one emoji")
+	if rawMode == "" {
+		return fmt.Errorf("mode option is required")
 	}
 
-	normalized := normalizeEmojis(emojiTokens)
-	if len(normalized) == 0 {
-		return fmt.Errorf("unable to understand the provided emojis")
+	emojiTokens := splitEmojiInput(rawEmoji)
+	if len(emojiTokens) == 0 {
+		return fmt.Errorf("please provide an emoji")
+	}
+
+	if len(emojiTokens) != 1 {
+		return fmt.Errorf("please configure one emoji at a time")
+	}
+
+	normalized := normalizeEmoji(emojiTokens[0])
+	if normalized == "" {
+		return fmt.Errorf("unable to understand the provided emoji")
 	}
 
 	color, hasColor, err := parseColor(rawColor)
 	if err != nil {
 		return err
+	}
+
+	mode := store.BookmarkMode(strings.ToLower(rawMode))
+	switch mode {
+	case store.ModeLightweight, store.ModeBalanced, store.ModeComplete:
+	default:
+		return fmt.Errorf("invalid mode. choose lightweight, balanced, or complete")
 	}
 
 	user := i.Member.User
@@ -95,10 +124,9 @@ func (c *SetBookmarkEmojiCommand) Handle(s *discordgo.Session, i *discordgo.Inte
 		return fmt.Errorf("unable to resolve user from interaction")
 	}
 
-	c.store.Set(user.ID, store.UserPreferences{Emojis: normalized, Color: color, HasColor: hasColor})
+	c.store.SetEmoji(user.ID, normalized, store.EmojiPreference{Mode: mode, Color: color, HasColor: hasColor})
 
-	displayEmoji := strings.Join(emojiTokens, ", ")
-	response := fmt.Sprintf("Saved %s as your bookmark emoji(s). React with them to save messages to your DM!", displayEmoji)
+	response := fmt.Sprintf("Saved %s in %s mode. React with it to save messages to your DM!", emojiTokens[0], string(mode))
 	if hasColor {
 		response += fmt.Sprintf(" Embed color set to #%s.", strings.ToUpper(fmt.Sprintf("%06x", color)))
 	}
