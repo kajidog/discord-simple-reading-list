@@ -8,8 +8,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
-	"github.com/example/discord-simple-reading-list/internal/reminders"
-	"github.com/example/discord-simple-reading-list/internal/store"
+	"github.com/example/discord-bookmark-manager/internal/reminders"
+	"github.com/example/discord-bookmark-manager/internal/store"
 )
 
 const defaultEmbedColor = 0x5865F2
@@ -229,22 +229,33 @@ func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 		embeds = append(embeds, cloneEmbed(e))
 	}
 
-	components := []discordgo.MessageComponent{
-		discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-			discordgo.Button{
-				Style: discordgo.LinkButton,
-				Label: "元メッセージ",
-				URL:   jumpURL,
-				Emoji: discordgo.ComponentEmoji{Name: "🔗"},
-			},
-			discordgo.Button{
-				Label:    "削除",
-				Style:    discordgo.DangerButton,
-				CustomID: DeleteButtonID,
-				Emoji:    discordgo.ComponentEmoji{Name: "🗑️"},
-			},
-		}},
+	components := []discordgo.MessageComponent{}
+	buttons := []discordgo.MessageComponent{
+		discordgo.Button{
+			Style: discordgo.LinkButton,
+			Label: "元メッセージ",
+			URL:   jumpURL,
+			Emoji: discordgo.ComponentEmoji{Name: "🔗"},
+		},
 	}
+
+	if schedule != nil {
+		buttons = append(buttons, discordgo.Button{
+			Label:    "完了",
+			Style:    discordgo.SuccessButton,
+			CustomID: CompleteButtonID,
+			Emoji:    discordgo.ComponentEmoji{Name: "✅"},
+		})
+	}
+
+	buttons = append(buttons, discordgo.Button{
+		Label:    "削除",
+		Style:    discordgo.DangerButton,
+		CustomID: DeleteButtonID,
+		Emoji:    discordgo.ComponentEmoji{Name: "🗑️"},
+	})
+
+	components = append(components, discordgo.ActionsRow{Components: buttons})
 
 	return &discordgo.MessageSend{
 		Embeds:     embeds,
@@ -260,17 +271,28 @@ func buildBalancedBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 		embeds = append(embeds, cloneEmbed(msg.Embeds[0]))
 	}
 
+	buttons := []discordgo.MessageComponent{}
+
+	if schedule != nil {
+		buttons = append(buttons, discordgo.Button{
+			Label:    "完了",
+			Style:    discordgo.SuccessButton,
+			CustomID: CompleteButtonID,
+			Emoji:    discordgo.ComponentEmoji{Name: "✅"},
+		})
+	}
+
+	buttons = append(buttons, discordgo.Button{
+		Label:    "削除",
+		Style:    discordgo.DangerButton,
+		CustomID: DeleteButtonID,
+		Emoji:    discordgo.ComponentEmoji{Name: "🗑️"},
+	})
+
 	return &discordgo.MessageSend{
 		Embeds: embeds,
 		Components: []discordgo.MessageComponent{
-			discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-				discordgo.Button{
-					Label:    "削除",
-					Style:    discordgo.DangerButton,
-					CustomID: DeleteButtonID,
-					Emoji:    discordgo.ComponentEmoji{Name: "🗑️"},
-				},
-			}},
+			discordgo.ActionsRow{Components: buttons},
 		},
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/example/discord-simple-reading-list/internal/reminders"
+	"github.com/example/discord-bookmark-manager/internal/reminders"
 )
 
 // BookmarkMode identifies how a bookmarked message should be formatted.

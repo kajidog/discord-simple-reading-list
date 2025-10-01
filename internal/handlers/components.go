@@ -5,7 +5,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
-	"github.com/example/discord-simple-reading-list/internal/reminders"
+	"github.com/example/discord-bookmark-manager/internal/reminders"
 )
 
 // CompleteButtonID identifies the button that marks a lightweight bookmark as complete.
