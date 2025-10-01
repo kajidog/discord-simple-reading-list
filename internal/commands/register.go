@@ -7,8 +7,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
-	"github.com/example/discord-simple-reading-list/internal/reminders"
-	"github.com/example/discord-simple-reading-list/internal/store"
+	"github.com/example/discord-bookmark-manager/internal/reminders"
+	"github.com/example/discord-bookmark-manager/internal/store"
 )
 
 // SetBookmarkCommandName identifies the slash command for selecting the bookmark reaction emoji and mode.

@@ -1,4 +1,4 @@
-# Discord Message Saver Bot
+# Discord Bookmark Manager
 
 This project is a Discord bot built with Go and [discordgo](https://github.com/bwmarrin/discordgo). Users can associate multiple emojis with different bookmark modes and, when they react to a message with one of those emojis, the bot forwards the message to their DM with the appropriate layout and controls.
 

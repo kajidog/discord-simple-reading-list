@@ -5,11 +5,11 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
-	"github.com/example/discord-simple-reading-list/internal/commands"
-	"github.com/example/discord-simple-reading-list/internal/config"
-	"github.com/example/discord-simple-reading-list/internal/handlers"
-	"github.com/example/discord-simple-reading-list/internal/reminders"
-	"github.com/example/discord-simple-reading-list/internal/store"
+	"github.com/example/discord-bookmark-manager/internal/commands"
+	"github.com/example/discord-bookmark-manager/internal/config"
+	"github.com/example/discord-bookmark-manager/internal/handlers"
+	"github.com/example/discord-bookmark-manager/internal/reminders"
+	"github.com/example/discord-bookmark-manager/internal/store"
 )
 
 // Bot encapsulates the Discord session and all registered handlers.

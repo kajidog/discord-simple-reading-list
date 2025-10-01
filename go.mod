@@ -1,4 +1,4 @@
-module github.com/example/discord-simple-reading-list
+module github.com/example/discord-bookmark-manager
 
 go 1.24.3
 

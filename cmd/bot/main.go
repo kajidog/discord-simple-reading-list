@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/example/discord-simple-reading-list/internal/bot"
-	"github.com/example/discord-simple-reading-list/internal/config"
+	"github.com/example/discord-bookmark-manager/internal/bot"
+	"github.com/example/discord-bookmark-manager/internal/config"
 )
 
 func main() {
