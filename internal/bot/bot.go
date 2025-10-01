@@ -38,7 +38,10 @@ func New(cfg *config.Config) (*Bot, error) {
 		return nil, err
 	}
 
-	reminderService := reminders.NewService(session)
+	reminderService, err := reminders.NewService(session, cfg.ReminderStorePath)
+	if err != nil {
+		return nil, err
+	}
 
 	registerCommand := commands.NewSetBookmarkCommand(emojiStore)
 	listCommand := commands.NewListBookmarksCommand(emojiStore)

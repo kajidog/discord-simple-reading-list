@@ -7,10 +7,11 @@ import (
 
 // Config holds runtime configuration values loaded from environment variables.
 type Config struct {
-	BotToken  string
-	AppID     string
-	GuildID   string
-	StorePath string
+	BotToken          string
+	AppID             string
+	GuildID           string
+	StorePath         string
+	ReminderStorePath string
 }
 
 // Load reads configuration from environment variables and validates that the required
@@ -33,10 +34,16 @@ func Load() (*Config, error) {
 		storePath = "bookmarks.json"
 	}
 
+	reminderStorePath := os.Getenv("REMINDER_STORE_PATH")
+	if reminderStorePath == "" {
+		reminderStorePath = "reminders.json"
+	}
+
 	return &Config{
-		BotToken:  token,
-		AppID:     appID,
-		GuildID:   guildID,
-		StorePath: storePath,
+		BotToken:          token,
+		AppID:             appID,
+		GuildID:           guildID,
+		StorePath:         storePath,
+		ReminderStorePath: reminderStorePath,
 	}, nil
 }
