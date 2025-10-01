@@ -17,6 +17,8 @@ type Bot struct {
 	config         *config.Config
 	store          *store.EmojiStore
 	registerCmd    *commands.SetBookmarkCommand
+	listCmd        *commands.ListBookmarksCommand
+	helpCmd        *commands.HelpCommand
 	reactionHandle *handlers.ReactionHandler
 	commandIDs     []string
 }
@@ -34,6 +36,8 @@ func New(cfg *config.Config) (*Bot, error) {
 	}
 
 	registerCommand := commands.NewSetBookmarkCommand(emojiStore)
+	listCommand := commands.NewListBookmarksCommand(emojiStore)
+	helpCommand := commands.NewHelpCommand()
 	reactionHandler := handlers.NewReactionHandler(emojiStore)
 
 	b := &Bot{
@@ -41,6 +45,8 @@ func New(cfg *config.Config) (*Bot, error) {
 		config:         cfg,
 		store:          emojiStore,
 		registerCmd:    registerCommand,
+		listCmd:        listCommand,
+		helpCmd:        helpCommand,
 		reactionHandle: reactionHandler,
 	}
 
@@ -84,23 +90,39 @@ func (b *Bot) Close() error {
 }
 
 func (b *Bot) registerCommands() error {
-	cmd := b.registerCmd.Definition()
-
-	created, err := b.session.ApplicationCommandCreate(b.config.AppID, b.config.GuildID, cmd)
-	if err != nil {
-		return err
+	definitions := []*discordgo.ApplicationCommand{
+		b.registerCmd.Definition(),
+		b.listCmd.Definition(),
+		b.helpCmd.Definition(),
 	}
 
-	b.commandIDs = append(b.commandIDs, created.ID)
+	for _, cmd := range definitions {
+		created, err := b.session.ApplicationCommandCreate(b.config.AppID, b.config.GuildID, cmd)
+		if err != nil {
+			return err
+		}
+
+		b.commandIDs = append(b.commandIDs, created.ID)
+	}
+
 	return nil
 }
 
 func (b *Bot) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		if i.ApplicationCommandData().Name == commands.SetBookmarkCommandName {
+		switch i.ApplicationCommandData().Name {
+		case commands.SetBookmarkCommandName:
 			if err := b.registerCmd.Handle(s, i); err != nil {
 				log.Printf("failed to handle register command: %v", err)
+			}
+		case commands.ListBookmarksCommandName:
+			if err := b.listCmd.Handle(s, i); err != nil {
+				log.Printf("failed to handle list command: %v", err)
+			}
+		case commands.HelpCommandName:
+			if err := b.helpCmd.Handle(s, i); err != nil {
+				log.Printf("failed to handle help command: %v", err)
 			}
 		}
 	case discordgo.InteractionMessageComponent:
