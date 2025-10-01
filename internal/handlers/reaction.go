@@ -58,12 +58,6 @@ func (h *ReactionHandler) Handle(s *discordgo.Session, event *discordgo.MessageR
 
 	channelName := fetchChannelName(s, event.ChannelID)
 
-	dmChannel, err := s.UserChannelCreate(event.UserID)
-	if err != nil {
-		log.Printf("failed to create DM channel: %v", err)
-		return
-	}
-
 	color := pref.Color
 	if !pref.HasColor {
 		color = defaultEmbedColor
@@ -99,25 +93,78 @@ func (h *ReactionHandler) Handle(s *discordgo.Session, event *discordgo.MessageR
 		return
 	}
 
-	sentMessage, err := s.ChannelMessageSendComplex(dmChannel.ID, messageSend)
+	destinationChannelID := ""
+	destinationGuildID := ""
+
+	switch pref.Destination {
+	case store.DestinationChannel:
+		if pref.ChannelID == "" {
+			log.Printf("bookmark destination misconfigured: missing channel id for emoji %s", event.Emoji.Name)
+			return
+		}
+
+		channel, err := fetchChannel(s, pref.ChannelID)
+		if err != nil {
+			log.Printf("failed to resolve destination channel: %v", err)
+			return
+		}
+
+		destinationChannelID = channel.ID
+		destinationGuildID = channel.GuildID
+	case store.DestinationDM, "":
+		dmChannel, err := s.UserChannelCreate(event.UserID)
+		if err != nil {
+			log.Printf("failed to create DM channel: %v", err)
+			return
+		}
+		destinationChannelID = dmChannel.ID
+	default:
+		log.Printf("unsupported bookmark destination: %s", pref.Destination)
+		return
+	}
+
+	sentMessage, err := s.ChannelMessageSendComplex(destinationChannelID, messageSend)
 	if err != nil {
-		log.Printf("failed to send DM: %v", err)
+		log.Printf("failed to send bookmark: %v", err)
 		return
 	}
 
 	if schedule != nil && h.reminders != nil && pref.Reminder != nil {
-		snippet := extractSnippet(msg)
-		bookmarkURL := ""
-		if sentMessage != nil {
-			bookmarkURL = buildJumpLink("", dmChannel.ID, sentMessage.ID)
+		reminderChannelID := destinationChannelID
+
+		if pref.Destination == store.DestinationChannel {
+			dmChannel, err := s.UserChannelCreate(event.UserID)
+			if err != nil {
+				log.Printf("failed to create DM channel for reminder: %v", err)
+				reminderChannelID = ""
+			} else {
+				reminderChannelID = dmChannel.ID
+			}
 		}
-		h.reminders.Schedule(sentMessage.ID, schedule.Time, reminders.Payload{
-			ChannelID:      dmChannel.ID,
-			JumpURL:        jumpURL,
-			BookmarkURL:    bookmarkURL,
-			ChannelName:    channelName,
-			ContentSnippet: snippet,
-		}, pref.Reminder.RemoveOnComplete)
+
+		if reminderChannelID == "" {
+			dmChannel, err := s.UserChannelCreate(event.UserID)
+			if err != nil {
+				log.Printf("failed to prepare reminder destination: %v", err)
+			} else {
+				reminderChannelID = dmChannel.ID
+			}
+		}
+
+		if reminderChannelID != "" {
+			snippet := extractSnippet(msg)
+			bookmarkURL := ""
+			if sentMessage != nil {
+				bookmarkURL = buildJumpLink(destinationGuildID, destinationChannelID, sentMessage.ID)
+			}
+			h.reminders.Schedule(sentMessage.ID, schedule.Time, reminders.Payload{
+				ChannelID:      reminderChannelID,
+				JumpURL:        jumpURL,
+				BookmarkURL:    bookmarkURL,
+				ChannelName:    channelName,
+				ContentSnippet: snippet,
+			}, pref.Reminder.RemoveOnComplete)
+		}
 	}
 }
 
@@ -137,6 +184,19 @@ func fetchChannelName(s *discordgo.Session, channelID string) string {
 	}
 
 	return channelID
+}
+
+func fetchChannel(s *discordgo.Session, channelID string) (*discordgo.Channel, error) {
+	if channel, err := s.State.Channel(channelID); err == nil && channel != nil {
+		return channel, nil
+	}
+
+	channel, err := s.Channel(channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	return channel, nil
 }
 
 func buildJumpLink(guildID, channelID, messageID string) string {

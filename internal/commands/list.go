@@ -68,6 +68,11 @@ func (c *ListBookmarksCommand) Handle(s *discordgo.Session, i *discordgo.Interac
 			colorDescription = fmt.Sprintf("#%06X", pref.Color)
 		}
 		builder.WriteString(fmt.Sprintf("• %s — %s mode (color: %s)\n", display, mode, colorDescription))
+		destinationLine := "  ↳ 📬 Destination: DMs"
+		if pref.Destination == store.DestinationChannel && pref.ChannelID != "" {
+			destinationLine = fmt.Sprintf("  ↳ 📬 Destination: <#%s>", pref.ChannelID)
+		}
+		builder.WriteString(destinationLine + "\n")
 		reminderLine := fmt.Sprintf("  ↳ ⏰ Reminder: %s", reminders.Describe(pref.Reminder))
 		if pref.Reminder != nil {
 			if pref.Reminder.RemoveOnComplete {

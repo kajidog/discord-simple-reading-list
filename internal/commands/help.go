@@ -33,7 +33,8 @@ func (c *HelpCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 		"  Keep the reminder after tapping Done with `keep-reminder-on-complete:true`.\n" +
 		"• `/list-bookmarks` — Review every emoji shortcut you've saved.\n" +
 		"• `/remove-bookmark emoji:😊` — Delete an emoji shortcut you no longer need.\n" +
-		"React with a saved emoji to receive a DM in the layout you chose."
+		"React with a saved emoji to receive the bookmark in your DMs or the channel you picked.\n" +
+		"Reminders always arrive in your DMs so you won't miss them."
 
 	return respondEphemeral(s, i, helpText)
 }
