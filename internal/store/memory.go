@@ -1,6 +1,13 @@
 package store
 
-import "sync"
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+	"sync"
+)
 
 // BookmarkMode identifies how a bookmarked message should be formatted.
 type BookmarkMode string
@@ -16,40 +23,78 @@ const (
 
 // EmojiPreference stores configuration for a specific emoji bookmark.
 type EmojiPreference struct {
-	Mode     BookmarkMode
-	Color    int
-	HasColor bool
+	Mode     BookmarkMode `json:"mode"`
+	Color    int          `json:"color"`
+	HasColor bool         `json:"hasColor"`
 }
 
 // UserPreferences stores the emoji and presentation configuration for a user.
 type UserPreferences struct {
-	Emojis map[string]EmojiPreference
+	Emojis map[string]EmojiPreference `json:"emojis"`
 }
 
 // EmojiStore provides thread-safe storage for user specific emoji preferences.
 type EmojiStore struct {
-	mu    sync.RWMutex
-	prefs map[string]UserPreferences
+	mu       sync.RWMutex
+	prefs    map[string]UserPreferences
+	filePath string
 }
 
-// NewEmojiStore initializes an empty EmojiStore.
-func NewEmojiStore() *EmojiStore {
-	return &EmojiStore{
-		prefs: make(map[string]UserPreferences),
+// NewEmojiStore initializes an EmojiStore and loads any persisted data from filePath.
+//
+// If filePath is empty, the store behaves as an in-memory only store.
+func NewEmojiStore(filePath string) (*EmojiStore, error) {
+	store := &EmojiStore{
+		prefs:    make(map[string]UserPreferences),
+		filePath: filePath,
 	}
+
+	if filePath == "" {
+		return store, nil
+	}
+
+	if err := store.load(); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return store, nil
+		}
+		return nil, err
+	}
+
+	return store, nil
 }
 
 // SetEmoji associates emoji preferences with a given user ID and emoji.
-func (s *EmojiStore) SetEmoji(userID, emoji string, pref EmojiPreference) {
+func (s *EmojiStore) SetEmoji(userID, emoji string, pref EmojiPreference) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	userPrefs, ok := s.prefs[userID]
+
+	var current map[string]EmojiPreference
 	if !ok || userPrefs.Emojis == nil {
-		userPrefs = UserPreferences{Emojis: make(map[string]EmojiPreference)}
+		current = make(map[string]EmojiPreference)
+	} else {
+		current = userPrefs.Emojis
 	}
 
-	userPrefs.Emojis[emoji] = pref
-	s.prefs[userID] = userPrefs
+	next := make(map[string]EmojiPreference, len(current)+1)
+	for key, value := range current {
+		next[key] = value
+	}
+	next[emoji] = pref
+
+	previous := userPrefs
+	s.prefs[userID] = UserPreferences{Emojis: next}
+
+	if err := s.saveLocked(); err != nil {
+		if ok {
+			s.prefs[userID] = previous
+		} else {
+			delete(s.prefs, userID)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // Get retrieves the preferences associated with the user ID, if any.
@@ -81,4 +126,81 @@ func (s *EmojiStore) GetEmoji(userID, emoji string) (EmojiPreference, bool) {
 
 	pref, ok := prefs.Emojis[emoji]
 	return pref, ok
+}
+
+func (s *EmojiStore) load() error {
+	file, err := os.Open(s.filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	var persisted map[string]UserPreferences
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&persisted); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
+	}
+
+	for userID, prefs := range persisted {
+		if prefs.Emojis == nil {
+			prefs.Emojis = make(map[string]EmojiPreference)
+		}
+		s.prefs[userID] = prefs
+	}
+
+	return nil
+}
+
+func (s *EmojiStore) saveLocked() error {
+	if s.filePath == "" {
+		return nil
+	}
+
+	toPersist := make(map[string]UserPreferences, len(s.prefs))
+	for userID, prefs := range s.prefs {
+		if len(prefs.Emojis) == 0 {
+			continue
+		}
+
+		if prefs.Emojis == nil {
+			continue
+		}
+
+		toPersist[userID] = prefs
+	}
+
+	dir := filepath.Dir(s.filePath)
+	if dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+
+	tempFile, err := os.CreateTemp(dir, "prefs-*.json")
+	if err != nil {
+		return err
+	}
+
+	encoder := json.NewEncoder(tempFile)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(toPersist); err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		return err
+	}
+
+	if err := tempFile.Close(); err != nil {
+		os.Remove(tempFile.Name())
+		return err
+	}
+
+	if err := os.Rename(tempFile.Name(), s.filePath); err != nil {
+		os.Remove(tempFile.Name())
+		return err
+	}
+
+	return nil
 }

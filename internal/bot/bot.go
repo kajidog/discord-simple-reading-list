@@ -28,7 +28,11 @@ func New(cfg *config.Config) (*Bot, error) {
 		return nil, err
 	}
 
-	emojiStore := store.NewEmojiStore()
+	emojiStore, err := store.NewEmojiStore(cfg.StorePath)
+	if err != nil {
+		return nil, err
+	}
+
 	registerCommand := commands.NewSetBookmarkCommand(emojiStore)
 	reactionHandler := handlers.NewReactionHandler(emojiStore)
 

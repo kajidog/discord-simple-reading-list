@@ -124,7 +124,9 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 		return fmt.Errorf("unable to resolve user from interaction")
 	}
 
-	c.store.SetEmoji(user.ID, normalized, store.EmojiPreference{Mode: mode, Color: color, HasColor: hasColor})
+	if err := c.store.SetEmoji(user.ID, normalized, store.EmojiPreference{Mode: mode, Color: color, HasColor: hasColor}); err != nil {
+		return fmt.Errorf("failed to save emoji preference: %w", err)
+	}
 
 	response := fmt.Sprintf("Saved %s in %s mode. React with it to save messages to your DM!", emojiTokens[0], string(mode))
 	if hasColor {

@@ -7,9 +7,10 @@ import (
 
 // Config holds runtime configuration values loaded from environment variables.
 type Config struct {
-	BotToken string
-	AppID    string
-	GuildID  string
+	BotToken  string
+	AppID     string
+	GuildID   string
+	StorePath string
 }
 
 // Load reads configuration from environment variables and validates that the required
@@ -27,9 +28,15 @@ func Load() (*Config, error) {
 
 	guildID := os.Getenv("DISCORD_GUILD_ID")
 
+	storePath := os.Getenv("BOOKMARK_STORE_PATH")
+	if storePath == "" {
+		storePath = "bookmarks.json"
+	}
+
 	return &Config{
-		BotToken: token,
-		AppID:    appID,
-		GuildID:  guildID,
+		BotToken:  token,
+		AppID:     appID,
+		GuildID:   guildID,
+		StorePath: storePath,
 	}, nil
 }

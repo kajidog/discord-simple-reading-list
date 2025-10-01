@@ -15,6 +15,7 @@ This project is a Discord bot built with Go and [discordgo](https://github.com/b
 | `DISCORD_TOKEN` | Bot token |
 | `DISCORD_APP_ID` | Application ID |
 | `DISCORD_GUILD_ID` | (Optional) Guild ID to register the command. Empty registers globally |
+| `BOOKMARK_STORE_PATH` | (Optional) Path to persist user bookmark settings. Defaults to `bookmarks.json` |
 
 Use `.env.example` as a reference when configuring the environment.
 
