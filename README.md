@@ -34,8 +34,10 @@ docker compose up --build
 ## Bot features
 
 1. `/set-bookmark` lets you choose an emoji, assign it to one of three bookmark modes, and optionally pick an embed color.
-2. Reacting with any registered emoji forwards the message to your DM using the configured mode (lightweight, balanced, or complete).
-3. Saved messages include mode-specific action buttons such as ✅ 完了, 🗑️ 削除, and 🔗 元メッセージ.
+2. `/list-bookmarks` shows the emojis you have configured and their associated modes and colors.
+3. `/bookmark-help` provides a quick reference for the available commands and how to use them.
+4. Reacting with any registered emoji forwards the message to your DM using the configured mode (lightweight, balanced, or complete).
+5. Saved messages include mode-specific action buttons such as ✅ 完了, 🗑️ 削除, and 🔗 元メッセージ.
 
 The bot registers the slash command automatically when it starts, so no additional registration command is required.
 
@@ -47,6 +49,8 @@ Use the following format when customising the bookmark behaviour:
 /set-bookmark emoji:👀 mode:lightweight color:#FFD700
 /set-bookmark emoji:🔖 mode:balanced
 /set-bookmark emoji:📌 mode:complete color:#FF6B6B
+/list-bookmarks
+/bookmark-help
 ```
 
 - Provide exactly one emoji per command execution. Custom server emojis are supported as usual (e.g. `<:name:123456>`).
