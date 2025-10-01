@@ -4,6 +4,8 @@ import (
 	"log"
 
 	"github.com/bwmarrin/discordgo"
+
+	"github.com/example/discord-simple-reading-list/internal/reminders"
 )
 
 // CompleteButtonID identifies the button that marks a lightweight bookmark as complete.
@@ -13,7 +15,17 @@ const CompleteButtonID = "bookmark_complete"
 const DeleteButtonID = "bookmark_delete"
 
 // ComponentHandler processes interactions originating from message components.
-func ComponentHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+type ComponentHandler struct {
+	reminders *reminders.Service
+}
+
+// NewComponentHandler constructs a component handler instance.
+func NewComponentHandler(reminders *reminders.Service) *ComponentHandler {
+	return &ComponentHandler{reminders: reminders}
+}
+
+// Handle reacts to button presses on bookmarked messages.
+func (h *ComponentHandler) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Type != discordgo.InteractionMessageComponent {
 		return
 	}
@@ -28,6 +40,14 @@ func ComponentHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 
 		if err := s.ChannelMessageDelete(i.ChannelID, i.Message.ID); err != nil {
 			log.Printf("failed to delete bookmarked message: %v", err)
+		}
+
+		if h.reminders != nil {
+			if customID == DeleteButtonID {
+				h.reminders.Cancel(i.Message.ID)
+			} else {
+				h.reminders.Complete(i.Message.ID)
+			}
 		}
 	}
 }

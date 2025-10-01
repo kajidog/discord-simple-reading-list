@@ -49,6 +49,8 @@ Use the following format when customising the bookmark behaviour:
 /set-bookmark emoji:👀 mode:lightweight color:#FFD700
 /set-bookmark emoji:🔖 mode:balanced
 /set-bookmark emoji:📌 mode:complete color:#FF6B6B
+/set-bookmark emoji:⏰ mode:lightweight reminder:8:00
+/set-bookmark emoji:⏰ mode:lightweight reminder:45m keep-reminder-on-complete:true
 /list-bookmarks
 /bookmark-help
 ```
@@ -56,3 +58,6 @@ Use the following format when customising the bookmark behaviour:
 - Provide exactly one emoji per command execution. Custom server emojis are supported as usual (e.g. `<:name:123456>`).
 - Choose between `lightweight`, `balanced`, or `complete` for the `mode` option.
 - The optional `color` argument accepts a 6-digit hex value with or without `#`/`0x` prefixes. Leave it out to fall back to the bot default.
+- Use the optional `reminder` argument to schedule a reminder for each saved message. Supply either a time of day such as `08:00` or a duration like `30m`/`2h`.
+- When a reminder is set, the saved DM includes the next reminder time. Reminders can be cleared with `reminder:none`.
+- Add `keep-reminder-on-complete:true` if you want the reminder to remain active after pressing the ✅ 完了 button. By default the reminder is removed when the bookmark is marked as complete.

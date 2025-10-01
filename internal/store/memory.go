@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/example/discord-simple-reading-list/internal/reminders"
 )
 
 // BookmarkMode identifies how a bookmarked message should be formatted.
@@ -23,9 +25,10 @@ const (
 
 // EmojiPreference stores configuration for a specific emoji bookmark.
 type EmojiPreference struct {
-	Mode     BookmarkMode `json:"mode"`
-	Color    int          `json:"color"`
-	HasColor bool         `json:"hasColor"`
+	Mode     BookmarkMode          `json:"mode"`
+	Color    int                   `json:"color"`
+	HasColor bool                  `json:"hasColor"`
+	Reminder *reminders.Preference `json:"reminder,omitempty"`
 }
 
 // UserPreferences stores the emoji and presentation configuration for a user.

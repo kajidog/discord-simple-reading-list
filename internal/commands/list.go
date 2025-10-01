@@ -7,6 +7,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
+	"github.com/example/discord-simple-reading-list/internal/reminders"
 	"github.com/example/discord-simple-reading-list/internal/store"
 )
 
@@ -67,6 +68,15 @@ func (c *ListBookmarksCommand) Handle(s *discordgo.Session, i *discordgo.Interac
 			colorDescription = fmt.Sprintf("#%06X", pref.Color)
 		}
 		builder.WriteString(fmt.Sprintf("• %s — %s モード (色: %s)\n", display, mode, colorDescription))
+		reminderLine := fmt.Sprintf("  ↳ リマインド: %s", reminders.Describe(pref.Reminder))
+		if pref.Reminder != nil {
+			if pref.Reminder.RemoveOnComplete {
+				reminderLine += " / 完了時に削除"
+			} else {
+				reminderLine += " / 完了後も維持"
+			}
+		}
+		builder.WriteString(reminderLine + "\n")
 	}
 
 	builder.WriteString("\n設定を変更する場合は `/set-bookmark` を使用してください。")

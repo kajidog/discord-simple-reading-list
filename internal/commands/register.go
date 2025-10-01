@@ -7,6 +7,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
+	"github.com/example/discord-simple-reading-list/internal/reminders"
 	"github.com/example/discord-simple-reading-list/internal/store"
 )
 
@@ -52,6 +53,18 @@ func (c *SetBookmarkCommand) Definition() *discordgo.ApplicationCommand {
 				Description: "Optional hex color (e.g. #ffcc00) for the saved message embed",
 				Required:    false,
 			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "reminder",
+				Description: "Optional reminder such as 08:00 or 45m",
+				Required:    false,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionBoolean,
+				Name:        "keep-reminder-on-complete",
+				Description: "Keep reminder when pressing the complete button",
+				Required:    false,
+			},
 		},
 	}
 }
@@ -70,6 +83,10 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 	var rawEmoji string
 	var rawColor string
 	var rawMode string
+	var rawReminder string
+	var reminderProvided bool
+	var keepReminder bool
+	var keepProvided bool
 
 	for _, option := range options {
 		switch option.Name {
@@ -79,6 +96,12 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 			rawMode = strings.TrimSpace(option.StringValue())
 		case "color":
 			rawColor = strings.TrimSpace(option.StringValue())
+		case "reminder":
+			rawReminder = strings.TrimSpace(option.StringValue())
+			reminderProvided = true
+		case "keep-reminder-on-complete":
+			keepReminder = option.BoolValue()
+			keepProvided = true
 		}
 	}
 
@@ -124,13 +147,71 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 		return fmt.Errorf("unable to resolve user from interaction")
 	}
 
-	if err := c.store.SetEmoji(user.ID, normalized, store.EmojiPreference{Mode: mode, Color: color, HasColor: hasColor}); err != nil {
+	existingPref, hasExisting := c.store.GetEmoji(user.ID, normalized)
+
+	var reminderPref *reminders.Preference
+	if hasExisting && existingPref.Reminder != nil {
+		copied := *existingPref.Reminder
+		reminderPref = &copied
+	}
+
+	if reminderProvided {
+		parsedReminder, err := reminders.Parse(rawReminder)
+		if err != nil {
+			return err
+		}
+
+		if parsedReminder == nil {
+			if keepProvided {
+				return fmt.Errorf("リマインドを削除する場合は keep-reminder-on-complete オプションは使用できません")
+			}
+			reminderPref = nil
+		} else {
+			removeOnComplete := true
+			if keepProvided {
+				removeOnComplete = !keepReminder
+			} else if reminderPref != nil {
+				removeOnComplete = reminderPref.RemoveOnComplete
+			}
+			parsedReminder.RemoveOnComplete = removeOnComplete
+			reminderPref = parsedReminder
+		}
+	} else if keepProvided {
+		if reminderPref == nil {
+			return fmt.Errorf("リマインドが設定されていないため keep-reminder-on-complete を変更できません。reminder オプションを設定してください。")
+		}
+		reminderPref.RemoveOnComplete = !keepReminder
+	}
+
+	prefToSave := store.EmojiPreference{Mode: mode, Color: color, HasColor: hasColor}
+	if reminderPref != nil {
+		copied := *reminderPref
+		prefToSave.Reminder = &copied
+	}
+
+	if err := c.store.SetEmoji(user.ID, normalized, prefToSave); err != nil {
 		return fmt.Errorf("failed to save emoji preference: %w", err)
 	}
 
 	response := fmt.Sprintf("Saved %s in %s mode. React with it to save messages to your DM!", emojiTokens[0], string(mode))
 	if hasColor {
 		response += fmt.Sprintf(" Embed color set to #%s.", strings.ToUpper(fmt.Sprintf("%06x", color)))
+	}
+	if reminderProvided {
+		if reminderPref == nil {
+			response += " Reminder cleared."
+		} else {
+			response += fmt.Sprintf(" Reminder: %s.", reminders.Describe(reminderPref))
+		}
+	} else if reminderPref != nil {
+		response += fmt.Sprintf(" Reminder: %s.", reminders.Describe(reminderPref))
+	}
+	if reminderPref != nil {
+		if reminderPref.RemoveOnComplete {
+			response += " 完了ボタンでリマインドも削除されます。"
+		} else {
+			response += " 完了ボタンを押してもリマインドは残ります。"
+		}
 	}
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,

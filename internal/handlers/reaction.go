@@ -8,6 +8,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
+	"github.com/example/discord-simple-reading-list/internal/reminders"
 	"github.com/example/discord-simple-reading-list/internal/store"
 )
 
@@ -15,12 +16,13 @@ const defaultEmbedColor = 0x5865F2
 
 // ReactionHandler sends a direct message when a user reacts with their registered emoji.
 type ReactionHandler struct {
-	store *store.EmojiStore
+	store     *store.EmojiStore
+	reminders *reminders.Service
 }
 
 // NewReactionHandler constructs a ReactionHandler.
-func NewReactionHandler(store *store.EmojiStore) *ReactionHandler {
-	return &ReactionHandler{store: store}
+func NewReactionHandler(store *store.EmojiStore, reminders *reminders.Service) *ReactionHandler {
+	return &ReactionHandler{store: store, reminders: reminders}
 }
 
 // Handle reacts to MessageReactionAdd events.
@@ -68,26 +70,54 @@ func (h *ReactionHandler) Handle(s *discordgo.Session, event *discordgo.MessageR
 	}
 
 	jumpURL := buildJumpLink(event.GuildID, event.ChannelID, event.MessageID)
+	now := time.Now()
+
+	var schedule *reminders.Schedule
+	if pref.Reminder != nil {
+		computed, err := reminders.Next(pref.Reminder, now)
+		if err != nil {
+			log.Printf("failed to compute reminder: %v", err)
+		} else {
+			schedule = computed
+		}
+	}
+
 	var messageSend *discordgo.MessageSend
 
 	switch pref.Mode {
 	case store.ModeLightweight:
-		messageSend = buildLightweightBookmark(msg, channelName, jumpURL, color, &event.Emoji)
+		messageSend = buildLightweightBookmark(msg, channelName, jumpURL, color, &event.Emoji, schedule)
 	case store.ModeComplete:
-		messageSend = buildCompleteBookmark(msg, channelName, jumpURL, color)
+		messageSend = buildCompleteBookmark(msg, channelName, jumpURL, color, schedule)
 	case store.ModeBalanced:
-		messageSend = buildBalancedBookmark(msg, channelName, jumpURL, color)
+		messageSend = buildBalancedBookmark(msg, channelName, jumpURL, color, schedule)
 	default:
-		messageSend = buildBalancedBookmark(msg, channelName, jumpURL, color)
+		messageSend = buildBalancedBookmark(msg, channelName, jumpURL, color, schedule)
 	}
 
 	if messageSend == nil {
 		return
 	}
 
-	_, err = s.ChannelMessageSendComplex(dmChannel.ID, messageSend)
+	sentMessage, err := s.ChannelMessageSendComplex(dmChannel.ID, messageSend)
 	if err != nil {
 		log.Printf("failed to send DM: %v", err)
+		return
+	}
+
+	if schedule != nil && h.reminders != nil && pref.Reminder != nil {
+		snippet := extractSnippet(msg)
+		bookmarkURL := ""
+		if sentMessage != nil {
+			bookmarkURL = buildJumpLink("", dmChannel.ID, sentMessage.ID)
+		}
+		h.reminders.Schedule(sentMessage.ID, schedule.Time, reminders.Payload{
+			ChannelID:      dmChannel.ID,
+			JumpURL:        jumpURL,
+			BookmarkURL:    bookmarkURL,
+			ChannelName:    channelName,
+			ContentSnippet: snippet,
+		}, pref.Reminder.RemoveOnComplete)
 	}
 }
 
@@ -117,7 +147,7 @@ func buildJumpLink(guildID, channelID, messageID string) string {
 	return fmt.Sprintf("https://discord.com/channels/%s/%s/%s", guildID, channelID, messageID)
 }
 
-func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL string, color int, emoji *discordgo.Emoji) *discordgo.MessageSend {
+func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL string, color int, emoji *discordgo.Emoji, schedule *reminders.Schedule) *discordgo.MessageSend {
 	titleEmoji := "👀"
 	if emoji != nil && emoji.Name != "" {
 		titleEmoji = emoji.Name
@@ -138,6 +168,14 @@ func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL strin
 				Inline: true,
 			},
 		},
+	}
+
+	if schedule != nil {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:   "リマインド",
+			Value:  schedule.Description,
+			Inline: true,
+		})
 	}
 
 	if msg.Content != "" {
@@ -180,8 +218,8 @@ func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL strin
 	}
 }
 
-func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, color int) *discordgo.MessageSend {
-	infoEmbed := buildInfoEmbed("📌 完全保存", msg, channelName, jumpURL, color, true)
+func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, color int, schedule *reminders.Schedule) *discordgo.MessageSend {
+	infoEmbed := buildInfoEmbed("📌 完全保存", msg, channelName, jumpURL, color, true, schedule)
 
 	embeds := []*discordgo.MessageEmbed{infoEmbed}
 	for _, e := range msg.Embeds {
@@ -214,8 +252,8 @@ func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 	}
 }
 
-func buildBalancedBookmark(msg *discordgo.Message, channelName, jumpURL string, color int) *discordgo.MessageSend {
-	infoEmbed := buildInfoEmbed("🔖 ブックマーク", msg, channelName, jumpURL, color, false)
+func buildBalancedBookmark(msg *discordgo.Message, channelName, jumpURL string, color int, schedule *reminders.Schedule) *discordgo.MessageSend {
+	infoEmbed := buildInfoEmbed("🔖 ブックマーク", msg, channelName, jumpURL, color, false, schedule)
 
 	embeds := []*discordgo.MessageEmbed{infoEmbed}
 	if len(msg.Embeds) == 1 && msg.Embeds[0] != nil {
@@ -237,7 +275,7 @@ func buildBalancedBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 	}
 }
 
-func buildInfoEmbed(title string, msg *discordgo.Message, channelName, jumpURL string, color int, includeAllAttachments bool) *discordgo.MessageEmbed {
+func buildInfoEmbed(title string, msg *discordgo.Message, channelName, jumpURL string, color int, includeAllAttachments bool, schedule *reminders.Schedule) *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Title: title,
 		Color: color,
@@ -258,6 +296,14 @@ func buildInfoEmbed(title string, msg *discordgo.Message, channelName, jumpURL s
 				Inline: true,
 			},
 		},
+	}
+
+	if schedule != nil {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:   "リマインド",
+			Value:  schedule.Description,
+			Inline: true,
+		})
 	}
 
 	if msg.Content != "" {
@@ -333,6 +379,26 @@ func firstImageURL(msg *discordgo.Message) string {
 	}
 
 	return ""
+}
+
+func extractSnippet(msg *discordgo.Message) string {
+	if msg == nil {
+		return ""
+	}
+
+	trimmed := strings.TrimSpace(msg.Content)
+	if trimmed == "" {
+		return ""
+	}
+
+	runes := []rune(trimmed)
+	limit := 200
+	if len(runes) > limit {
+		runes = runes[:limit]
+		return strings.TrimSpace(string(runes)) + "…"
+	}
+
+	return strings.TrimSpace(string(runes))
 }
 
 func isImageAttachment(attachment *discordgo.MessageAttachment) bool {

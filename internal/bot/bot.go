@@ -8,19 +8,22 @@ import (
 	"github.com/example/discord-simple-reading-list/internal/commands"
 	"github.com/example/discord-simple-reading-list/internal/config"
 	"github.com/example/discord-simple-reading-list/internal/handlers"
+	"github.com/example/discord-simple-reading-list/internal/reminders"
 	"github.com/example/discord-simple-reading-list/internal/store"
 )
 
 // Bot encapsulates the Discord session and all registered handlers.
 type Bot struct {
-	session        *discordgo.Session
-	config         *config.Config
-	store          *store.EmojiStore
-	registerCmd    *commands.SetBookmarkCommand
-	listCmd        *commands.ListBookmarksCommand
-	helpCmd        *commands.HelpCommand
-	reactionHandle *handlers.ReactionHandler
-	commandIDs     []string
+	session         *discordgo.Session
+	config          *config.Config
+	store           *store.EmojiStore
+	registerCmd     *commands.SetBookmarkCommand
+	listCmd         *commands.ListBookmarksCommand
+	helpCmd         *commands.HelpCommand
+	reactionHandle  *handlers.ReactionHandler
+	componentHandle *handlers.ComponentHandler
+	reminders       *reminders.Service
+	commandIDs      []string
 }
 
 // New constructs a new Bot instance.
@@ -35,23 +38,29 @@ func New(cfg *config.Config) (*Bot, error) {
 		return nil, err
 	}
 
+	reminderService := reminders.NewService(session)
+
 	registerCommand := commands.NewSetBookmarkCommand(emojiStore)
 	listCommand := commands.NewListBookmarksCommand(emojiStore)
 	helpCommand := commands.NewHelpCommand()
-	reactionHandler := handlers.NewReactionHandler(emojiStore)
+	reactionHandler := handlers.NewReactionHandler(emojiStore, reminderService)
+	componentHandler := handlers.NewComponentHandler(reminderService)
 
 	b := &Bot{
-		session:        session,
-		config:         cfg,
-		store:          emojiStore,
-		registerCmd:    registerCommand,
-		listCmd:        listCommand,
-		helpCmd:        helpCommand,
-		reactionHandle: reactionHandler,
+		session:         session,
+		config:          cfg,
+		store:           emojiStore,
+		registerCmd:     registerCommand,
+		listCmd:         listCommand,
+		helpCmd:         helpCommand,
+		reactionHandle:  reactionHandler,
+		componentHandle: componentHandler,
+		reminders:       reminderService,
 	}
 
 	session.AddHandler(b.onInteraction)
 	session.AddHandler(reactionHandler.Handle)
+	session.AddHandler(componentHandler.Handle)
 
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions | discordgo.IntentsDirectMessages
 
@@ -74,6 +83,10 @@ func (b *Bot) Open() error {
 
 // Close cleans up resources and unregisters commands.
 func (b *Bot) Close() error {
+	if b.reminders != nil {
+		// Ensure no reminders fire after shutdown.
+		b.reminders.Close()
+	}
 	if len(b.commandIDs) > 0 {
 		for _, id := range b.commandIDs {
 			if err := b.session.ApplicationCommandDelete(b.config.AppID, b.config.GuildID, id); err != nil {
@@ -126,6 +139,8 @@ func (b *Bot) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate
 			}
 		}
 	case discordgo.InteractionMessageComponent:
-		handlers.ComponentHandler(s, i)
+		if b.componentHandle != nil {
+			b.componentHandle.Handle(s, i)
+		}
 	}
 }
