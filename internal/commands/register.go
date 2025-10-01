@@ -49,6 +49,23 @@ func (c *SetBookmarkCommand) Definition() *discordgo.ApplicationCommand {
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "destination",
+				Description: "Where to send saved bookmarks: dm or channel",
+				Required:    false,
+				Choices: []*discordgo.ApplicationCommandOptionChoice{
+					{Name: "📬 Direct Message", Value: string(store.DestinationDM)},
+					{Name: "#️⃣ Channel", Value: string(store.DestinationChannel)},
+				},
+			},
+			{
+				Type:         discordgo.ApplicationCommandOptionChannel,
+				Name:         "destination-channel",
+				Description:  "Channel to send bookmarks to when destination is channel",
+				Required:     false,
+				ChannelTypes: []discordgo.ChannelType{discordgo.ChannelTypeGuildText, discordgo.ChannelTypeGuildNews, discordgo.ChannelTypeGuildPublicThread, discordgo.ChannelTypeGuildPrivateThread, discordgo.ChannelTypeGuildNewsThread},
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "color",
 				Description: "Optional hex color (e.g. #ffcc00) for the saved message embed",
 				Required:    false,
@@ -87,6 +104,9 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 	var reminderProvided bool
 	var keepReminder bool
 	var keepProvided bool
+	var rawDestination string
+	var destinationChannelID string
+	var destinationChannelProvided bool
 
 	for _, option := range options {
 		switch option.Name {
@@ -94,6 +114,15 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 			rawEmoji = strings.TrimSpace(option.StringValue())
 		case "mode":
 			rawMode = strings.TrimSpace(option.StringValue())
+		case "destination":
+			rawDestination = strings.TrimSpace(option.StringValue())
+		case "destination-channel":
+			channel := option.ChannelValue(s)
+			if channel == nil {
+				return fmt.Errorf("unable to resolve the selected channel")
+			}
+			destinationChannelID = channel.ID
+			destinationChannelProvided = true
 		case "color":
 			rawColor = strings.TrimSpace(option.StringValue())
 		case "reminder":
@@ -155,6 +184,35 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 		reminderPref = &copied
 	}
 
+	destination := existingPref.Destination
+	channelID := existingPref.ChannelID
+	if destination == "" {
+		destination = store.DestinationDM
+	}
+
+	if rawDestination != "" {
+		destination = store.DestinationType(strings.ToLower(rawDestination))
+	}
+
+	if destinationChannelProvided {
+		channelID = destinationChannelID
+	}
+
+	if destination == "" {
+		destination = store.DestinationDM
+	}
+
+	switch destination {
+	case store.DestinationDM:
+		channelID = ""
+	case store.DestinationChannel:
+		if channelID == "" {
+			return fmt.Errorf("please choose a destination-channel when sending bookmarks to a channel")
+		}
+	default:
+		return fmt.Errorf("invalid destination. choose dm or channel")
+	}
+
 	if reminderProvided {
 		parsedReminder, err := reminders.Parse(rawReminder)
 		if err != nil {
@@ -183,7 +241,13 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 		reminderPref.RemoveOnComplete = !keepReminder
 	}
 
-	prefToSave := store.EmojiPreference{Mode: mode, Color: color, HasColor: hasColor}
+	prefToSave := store.EmojiPreference{
+		Mode:        mode,
+		Color:       color,
+		HasColor:    hasColor,
+		Destination: destination,
+		ChannelID:   channelID,
+	}
 	if reminderPref != nil {
 		copied := *reminderPref
 		prefToSave.Reminder = &copied
@@ -193,7 +257,12 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 		return fmt.Errorf("failed to save emoji preference: %w", err)
 	}
 
-	response := fmt.Sprintf("Saved %s in %s mode. React with it to save messages to your DM!", emojiTokens[0], string(mode))
+	destinationLabel := "your DMs"
+	if destination == store.DestinationChannel {
+		destinationLabel = fmt.Sprintf("<#%s>", channelID)
+	}
+
+	response := fmt.Sprintf("Saved %s in %s mode. React with it to save messages to %s!", emojiTokens[0], string(mode), destinationLabel)
 	if hasColor {
 		response += fmt.Sprintf(" Embed color set to #%s.", strings.ToUpper(fmt.Sprintf("%06x", color)))
 	}

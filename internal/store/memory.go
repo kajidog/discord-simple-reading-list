@@ -23,12 +23,36 @@ const (
 	ModeBalanced BookmarkMode = "balanced"
 )
 
+// DestinationType identifies where the bookmark should be delivered.
+type DestinationType string
+
+const (
+	// DestinationDM sends the bookmark as a direct message.
+	DestinationDM DestinationType = "dm"
+	// DestinationChannel sends the bookmark to a guild text channel.
+	DestinationChannel DestinationType = "channel"
+)
+
 // EmojiPreference stores configuration for a specific emoji bookmark.
 type EmojiPreference struct {
-	Mode     BookmarkMode          `json:"mode"`
-	Color    int                   `json:"color"`
-	HasColor bool                  `json:"hasColor"`
-	Reminder *reminders.Preference `json:"reminder,omitempty"`
+	Mode        BookmarkMode          `json:"mode"`
+	Color       int                   `json:"color"`
+	HasColor    bool                  `json:"hasColor"`
+	Reminder    *reminders.Preference `json:"reminder,omitempty"`
+	Destination DestinationType       `json:"destination,omitempty"`
+	ChannelID   string                `json:"channelId,omitempty"`
+}
+
+func normalizeEmojiPreference(pref EmojiPreference) EmojiPreference {
+	if pref.Destination == "" {
+		pref.Destination = DestinationDM
+	}
+
+	if pref.Destination != DestinationChannel {
+		pref.ChannelID = ""
+	}
+
+	return pref
 }
 
 // UserPreferences stores the emoji and presentation configuration for a user.
@@ -81,9 +105,9 @@ func (s *EmojiStore) SetEmoji(userID, emoji string, pref EmojiPreference) error 
 
 	next := make(map[string]EmojiPreference, len(current)+1)
 	for key, value := range current {
-		next[key] = value
+		next[key] = normalizeEmojiPreference(value)
 	}
-	next[emoji] = pref
+	next[emoji] = normalizeEmojiPreference(pref)
 
 	previous := userPrefs
 	s.prefs[userID] = UserPreferences{Emojis: next}
@@ -151,6 +175,12 @@ func (s *EmojiStore) Get(userID string) (UserPreferences, bool) {
 	// Ensure the map is non-nil for consumers.
 	if prefs.Emojis == nil {
 		prefs.Emojis = make(map[string]EmojiPreference)
+	} else {
+		normalized := make(map[string]EmojiPreference, len(prefs.Emojis))
+		for emoji, pref := range prefs.Emojis {
+			normalized[emoji] = normalizeEmojiPreference(pref)
+		}
+		prefs.Emojis = normalized
 	}
 
 	return prefs, true
@@ -167,7 +197,11 @@ func (s *EmojiStore) GetEmoji(userID, emoji string) (EmojiPreference, bool) {
 	}
 
 	pref, ok := prefs.Emojis[emoji]
-	return pref, ok
+	if !ok {
+		return EmojiPreference{}, false
+	}
+
+	return normalizeEmojiPreference(pref), true
 }
 
 func (s *EmojiStore) load() error {
@@ -190,6 +224,12 @@ func (s *EmojiStore) load() error {
 		if prefs.Emojis == nil {
 			prefs.Emojis = make(map[string]EmojiPreference)
 		}
+
+		normalized := make(map[string]EmojiPreference, len(prefs.Emojis))
+		for emoji, pref := range prefs.Emojis {
+			normalized[emoji] = normalizeEmojiPreference(pref)
+		}
+		prefs.Emojis = normalized
 		s.prefs[userID] = prefs
 	}
 
