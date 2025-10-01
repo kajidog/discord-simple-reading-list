@@ -100,6 +100,45 @@ func (s *EmojiStore) SetEmoji(userID, emoji string, pref EmojiPreference) error 
 	return nil
 }
 
+// DeleteEmoji removes an emoji preference for the given user ID. It returns true when a
+// preference was removed.
+func (s *EmojiStore) DeleteEmoji(userID, emoji string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	userPrefs, ok := s.prefs[userID]
+	if !ok || len(userPrefs.Emojis) == 0 {
+		return false, nil
+	}
+
+	if _, exists := userPrefs.Emojis[emoji]; !exists {
+		return false, nil
+	}
+
+	previous := userPrefs
+
+	next := make(map[string]EmojiPreference, len(userPrefs.Emojis)-1)
+	for key, value := range userPrefs.Emojis {
+		if key == emoji {
+			continue
+		}
+		next[key] = value
+	}
+
+	if len(next) == 0 {
+		delete(s.prefs, userID)
+	} else {
+		s.prefs[userID] = UserPreferences{Emojis: next}
+	}
+
+	if err := s.saveLocked(); err != nil {
+		s.prefs[userID] = previous
+		return false, err
+	}
+
+	return true, nil
+}
+
 // Get retrieves the preferences associated with the user ID, if any.
 func (s *EmojiStore) Get(userID string) (UserPreferences, bool) {
 	s.mu.RLock()

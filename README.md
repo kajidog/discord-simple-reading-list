@@ -2,6 +2,13 @@
 
 This project is a Discord bot built with Go and [discordgo](https://github.com/bwmarrin/discordgo). Users can associate multiple emojis with different bookmark modes and, when they react to a message with one of those emojis, the bot forwards the message to their DM with the appropriate layout and controls.
 
+## What you can do
+
+- React with an emoji to file a message into your DM with tailored layouts.
+- Pick between quick, balanced, or full-detail bookmark styles with custom colors.
+- Schedule reminders and decide whether they clear when you mark a bookmark as done.
+- Add, list, and remove emoji shortcuts with slash commands.
+
 ## Requirements
 
 - Go 1.20+
@@ -38,7 +45,7 @@ docker compose up --build
 2. `/list-bookmarks` shows the emojis you have configured and their associated modes and colors.
 3. `/bookmark-help` provides a quick reference for the available commands and how to use them.
 4. Reacting with any registered emoji forwards the message to your DM using the configured mode (lightweight, balanced, or complete).
-5. Saved messages include mode-specific action buttons such as ✅ 完了, 🗑️ 削除, and 🔗 元メッセージ.
+5. Saved messages include mode-specific action buttons such as ✅ Done, 🗑️ Remove, and 🔗 Source.
 
 The bot registers the slash command automatically when it starts, so no additional registration command is required.
 
@@ -52,6 +59,7 @@ Use the following format when customising the bookmark behaviour:
 /set-bookmark emoji:📌 mode:complete color:#FF6B6B
 /set-bookmark emoji:⏰ mode:lightweight reminder:8:00
 /set-bookmark emoji:⏰ mode:lightweight reminder:45m keep-reminder-on-complete:true
+/remove-bookmark emoji:👀
 /list-bookmarks
 /bookmark-help
 ```
@@ -61,4 +69,4 @@ Use the following format when customising the bookmark behaviour:
 - The optional `color` argument accepts a 6-digit hex value with or without `#`/`0x` prefixes. Leave it out to fall back to the bot default.
 - Use the optional `reminder` argument to schedule a reminder for each saved message. Supply either a time of day such as `08:00` or a duration like `30m`/`2h`.
 - When a reminder is set, the saved DM includes the next reminder time. Reminders can be cleared with `reminder:none`.
-- Add `keep-reminder-on-complete:true` if you want the reminder to remain active after pressing the ✅ 完了 button. By default the reminder is removed when the bookmark is marked as complete.
+- Add `keep-reminder-on-complete:true` if you want the reminder to remain active after pressing the ✅ Done button. By default the reminder is removed when the bookmark is marked as complete.

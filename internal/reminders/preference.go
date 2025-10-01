@@ -44,30 +44,30 @@ func Parse(raw string) (*Preference, error) {
 
 	lowered := strings.ToLower(trimmed)
 	switch lowered {
-	case "none", "off", "clear", "なし", "0":
+	case "none", "off", "clear", "0":
 		return nil, nil
 	}
 
 	if strings.Contains(trimmed, ":") {
 		parts := strings.Split(trimmed, ":")
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("無効な時刻です。`08:30` の形式で入力してください。")
+			return nil, fmt.Errorf("invalid time. Use HH:MM such as 08:30")
 		}
 
 		hour, err := strconv.Atoi(strings.TrimSpace(parts[0]))
 		if err != nil {
-			return nil, fmt.Errorf("時刻の時部分を読み取れませんでした: %w", err)
+			return nil, fmt.Errorf("unable to read hour value: %w", err)
 		}
 		minute, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 		if err != nil {
-			return nil, fmt.Errorf("時刻の分部分を読み取れませんでした: %w", err)
+			return nil, fmt.Errorf("unable to read minute value: %w", err)
 		}
 
 		if hour < 0 || hour > 23 {
-			return nil, errors.New("時刻の時は 0〜23 の範囲で指定してください")
+			return nil, errors.New("hour must be between 0 and 23")
 		}
 		if minute < 0 || minute > 59 {
-			return nil, errors.New("時刻の分は 0〜59 の範囲で指定してください")
+			return nil, errors.New("minute must be between 0 and 59")
 		}
 
 		return &Preference{
@@ -83,10 +83,10 @@ func Parse(raw string) (*Preference, error) {
 
 	duration, err := time.ParseDuration(cleaned)
 	if err != nil {
-		return nil, errors.New("時間は `30m` や `2h45m` のような形式で入力してください")
+		return nil, errors.New("use durations like `30m` or `2h45m`")
 	}
 	if duration <= 0 {
-		return nil, errors.New("リマインドまでの時間は 1分以上にしてください")
+		return nil, errors.New("reminders must be at least 1m in the future")
 	}
 
 	return &Preference{
@@ -107,37 +107,37 @@ func Next(pref *Preference, now time.Time) (*Schedule, error) {
 		if !target.After(now) {
 			target = target.Add(24 * time.Hour)
 		}
-		desc := fmt.Sprintf("%s に通知（毎日）", target.Format("2006-01-02 15:04"))
+		desc := fmt.Sprintf("Next alert at %s (daily)", target.Format("2006-01-02 15:04"))
 		return &Schedule{Time: target, Description: desc}, nil
 	case ModeDuration:
 		duration := time.Duration(pref.DurationSeconds) * time.Second
 		if duration <= 0 {
-			return nil, errors.New("リマインドの設定が無効です。再設定してください。")
+			return nil, errors.New("the reminder configuration is invalid. Please set it again")
 		}
 		target := now.Add(duration)
-		desc := fmt.Sprintf("%s後（%s）", formatDuration(duration), target.Format("2006-01-02 15:04"))
+		desc := fmt.Sprintf("Reminder in %s (%s)", formatDuration(duration), target.Format("2006-01-02 15:04"))
 		return &Schedule{Time: target, Description: desc}, nil
 	case ModeNone:
 		return nil, nil
 	default:
-		return nil, fmt.Errorf("不明なリマインドモードです")
+		return nil, fmt.Errorf("unknown reminder mode")
 	}
 }
 
 // Describe returns a concise textual representation of the reminder configuration for listings.
 func Describe(pref *Preference) string {
 	if pref == nil {
-		return "リマインドなし"
+		return "No reminder"
 	}
 
 	switch pref.Mode {
 	case ModeTimeOfDay:
-		return fmt.Sprintf("毎日 %02d:%02d", pref.Hour, pref.Minute)
+		return fmt.Sprintf("Every day at %02d:%02d", pref.Hour, pref.Minute)
 	case ModeDuration:
 		duration := time.Duration(pref.DurationSeconds) * time.Second
-		return fmt.Sprintf("保存から %s後", formatDuration(duration))
+		return fmt.Sprintf("%s after saving", formatDuration(duration))
 	default:
-		return "リマインドなし"
+		return "No reminder"
 	}
 }
 
@@ -147,7 +147,7 @@ func formatDuration(d time.Duration) string {
 		if minutes <= 0 {
 			minutes = 1
 		}
-		return fmt.Sprintf("%d分", minutes)
+		return fmt.Sprintf("%d min", minutes)
 	}
 
 	hours := int(d / time.Hour)
@@ -156,21 +156,21 @@ func formatDuration(d time.Duration) string {
 
 	var parts []string
 	if hours > 0 {
-		parts = append(parts, fmt.Sprintf("%d時間", hours))
+		parts = append(parts, fmt.Sprintf("%dh", hours))
 	}
 	if minutes > 0 {
-		parts = append(parts, fmt.Sprintf("%d分", minutes))
+		parts = append(parts, fmt.Sprintf("%dm", minutes))
 	}
 	if len(parts) == 0 {
 		seconds := int((remainder % time.Minute) / time.Second)
 		if seconds > 0 {
-			parts = append(parts, fmt.Sprintf("%d秒", seconds))
+			parts = append(parts, fmt.Sprintf("%ds", seconds))
 		}
 	}
 
 	if len(parts) == 0 {
-		return "数分"
+		return "a few minutes"
 	}
 
-	return strings.Join(parts, "")
+	return strings.Join(parts, " ")
 }

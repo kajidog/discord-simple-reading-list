@@ -18,6 +18,7 @@ type Bot struct {
 	config          *config.Config
 	store           *store.EmojiStore
 	registerCmd     *commands.SetBookmarkCommand
+	removeCmd       *commands.RemoveBookmarkCommand
 	listCmd         *commands.ListBookmarksCommand
 	helpCmd         *commands.HelpCommand
 	reactionHandle  *handlers.ReactionHandler
@@ -44,6 +45,7 @@ func New(cfg *config.Config) (*Bot, error) {
 	}
 
 	registerCommand := commands.NewSetBookmarkCommand(emojiStore)
+	removeCommand := commands.NewRemoveBookmarkCommand(emojiStore)
 	listCommand := commands.NewListBookmarksCommand(emojiStore)
 	helpCommand := commands.NewHelpCommand()
 	reactionHandler := handlers.NewReactionHandler(emojiStore, reminderService)
@@ -54,6 +56,7 @@ func New(cfg *config.Config) (*Bot, error) {
 		config:          cfg,
 		store:           emojiStore,
 		registerCmd:     registerCommand,
+		removeCmd:       removeCommand,
 		listCmd:         listCommand,
 		helpCmd:         helpCommand,
 		reactionHandle:  reactionHandler,
@@ -108,6 +111,7 @@ func (b *Bot) Close() error {
 func (b *Bot) registerCommands() error {
 	definitions := []*discordgo.ApplicationCommand{
 		b.registerCmd.Definition(),
+		b.removeCmd.Definition(),
 		b.listCmd.Definition(),
 		b.helpCmd.Definition(),
 	}
@@ -131,6 +135,10 @@ func (b *Bot) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate
 		case commands.SetBookmarkCommandName:
 			if err := b.registerCmd.Handle(s, i); err != nil {
 				log.Printf("failed to handle register command: %v", err)
+			}
+		case commands.RemoveBookmarkCommandName:
+			if err := b.removeCmd.Handle(s, i); err != nil {
+				log.Printf("failed to handle remove command: %v", err)
 			}
 		case commands.ListBookmarksCommandName:
 			if err := b.listCmd.Handle(s, i); err != nil {
