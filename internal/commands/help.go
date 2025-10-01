@@ -29,6 +29,8 @@ func (c *HelpCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 
 	helpText := "ブックマークボットの使い方:\n" +
 		"• `/set-bookmark emoji:😊 mode:lightweight color:#FFD700` — 絵文字に保存モードと色を割り当てます。\n" +
+		"• `/set-bookmark emoji:⏰ mode:lightweight reminder:8:00` — リマインドする時刻や `30m` のような時間を設定できます。\n" +
+		"  完了ボタンでリマインドを残したい場合は `keep-reminder-on-complete:true` を追加してください。\n" +
 		"• `/list-bookmarks` — 現在登録している絵文字とモードを確認できます。\n" +
 		"メッセージに指定した絵文字でリアクションすると、設定したモードでDMに送信されます。"
 
