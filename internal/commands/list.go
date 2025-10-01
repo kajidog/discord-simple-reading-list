@@ -48,7 +48,7 @@ func (c *ListBookmarksCommand) Handle(s *discordgo.Session, i *discordgo.Interac
 
 	prefs, ok := c.store.Get(user.ID)
 	if !ok || len(prefs.Emojis) == 0 {
-		return respondEphemeral(s, i, "まだブックマークは登録されていません。`/set-bookmark` コマンドで保存を始めましょう！")
+		return respondEphemeral(s, i, "📭 No bookmark emojis saved yet. Use `/set-bookmark` to create one!")
 	}
 
 	emojis := make([]string, 0, len(prefs.Emojis))
@@ -58,28 +58,28 @@ func (c *ListBookmarksCommand) Handle(s *discordgo.Session, i *discordgo.Interac
 	sort.Strings(emojis)
 
 	var builder strings.Builder
-	builder.WriteString("現在登録されているブックマーク設定:\n")
+	builder.WriteString("⭐ Saved bookmark shortcuts:\n")
 	for _, emoji := range emojis {
 		pref := prefs.Emojis[emoji]
 		display := formatEmojiForDisplay(emoji)
 		mode := string(pref.Mode)
-		colorDescription := "デフォルト"
+		colorDescription := "default"
 		if pref.HasColor {
 			colorDescription = fmt.Sprintf("#%06X", pref.Color)
 		}
-		builder.WriteString(fmt.Sprintf("• %s — %s モード (色: %s)\n", display, mode, colorDescription))
-		reminderLine := fmt.Sprintf("  ↳ リマインド: %s", reminders.Describe(pref.Reminder))
+		builder.WriteString(fmt.Sprintf("• %s — %s mode (color: %s)\n", display, mode, colorDescription))
+		reminderLine := fmt.Sprintf("  ↳ ⏰ Reminder: %s", reminders.Describe(pref.Reminder))
 		if pref.Reminder != nil {
 			if pref.Reminder.RemoveOnComplete {
-				reminderLine += " / 完了時に削除"
+				reminderLine += " / ✅ clears on Done"
 			} else {
-				reminderLine += " / 完了後も維持"
+				reminderLine += " / 🔁 stays after Done"
 			}
 		}
 		builder.WriteString(reminderLine + "\n")
 	}
 
-	builder.WriteString("\n設定を変更する場合は `/set-bookmark` を使用してください。")
+	builder.WriteString("\nUse `/set-bookmark` to tweak settings or `/remove-bookmark` to delete one.")
 
 	return respondEphemeral(s, i, builder.String())
 }

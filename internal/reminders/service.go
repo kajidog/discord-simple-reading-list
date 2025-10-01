@@ -131,30 +131,30 @@ func (s *Service) deliver(messageID string) {
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title:       "⏰ リマインド",
-		Description: fmt.Sprintf("#%s のメッセージを確認しましょう。", reminder.payload.ChannelName),
+		Title:       "⏰ Reminder",
+		Description: fmt.Sprintf("Take another look at #%s.", reminder.payload.ChannelName),
 		Color:       0xFEE75C,
 		Timestamp:   time.Now().Format(time.RFC3339),
 	}
 
 	if reminder.payload.ContentSnippet != "" {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "メモ",
+			Name:  "📝 Note",
 			Value: reminder.payload.ContentSnippet,
 		})
 	}
 
 	if reminder.payload.JumpURL != "" {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "元メッセージ",
-			Value: fmt.Sprintf("[リンクはこちら](%s)", reminder.payload.JumpURL),
+			Name:  "🔗 Source Message",
+			Value: fmt.Sprintf("[Open message](%s)", reminder.payload.JumpURL),
 		})
 	}
 
 	if reminder.payload.BookmarkURL != "" {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "ブックマーク",
-			Value: fmt.Sprintf("[DMを開く](%s)", reminder.payload.BookmarkURL),
+			Name:  "📬 Saved Bookmark",
+			Value: fmt.Sprintf("[Open DM](%s)", reminder.payload.BookmarkURL),
 		})
 	}
 

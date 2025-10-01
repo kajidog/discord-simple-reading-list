@@ -154,16 +154,16 @@ func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL strin
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title: fmt.Sprintf("%s 後で読む", titleEmoji),
+		Title: fmt.Sprintf("%s Quick Read", titleEmoji),
 		Color: color,
 		Fields: []*discordgo.MessageEmbedField{
 			{
-				Name:   "チャンネル",
+				Name:   "📺 Channel",
 				Value:  fmt.Sprintf("#%s", channelName),
 				Inline: true,
 			},
 			{
-				Name:   "保存日時",
+				Name:   "💾 Saved",
 				Value:  time.Now().Format("2006-01-02 15:04"),
 				Inline: true,
 			},
@@ -172,7 +172,7 @@ func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL strin
 
 	if schedule != nil {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:   "リマインド",
+			Name:   "⏰ Reminder",
 			Value:  schedule.Description,
 			Inline: true,
 		})
@@ -188,8 +188,8 @@ func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL strin
 
 	if jumpURL != "" {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "元メッセージ",
-			Value: fmt.Sprintf("[リンクはこちら](%s)", jumpURL),
+			Name:  "🔗 Source Message",
+			Value: fmt.Sprintf("[Open](%s)", jumpURL),
 		})
 	}
 
@@ -202,13 +202,13 @@ func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL strin
 		Components: []discordgo.MessageComponent{
 			discordgo.ActionsRow{Components: []discordgo.MessageComponent{
 				discordgo.Button{
-					Label:    "完了",
+					Label:    "Done",
 					Style:    discordgo.SuccessButton,
 					CustomID: CompleteButtonID,
 					Emoji:    discordgo.ComponentEmoji{Name: "✅"},
 				},
 				discordgo.Button{
-					Label:    "削除",
+					Label:    "Remove",
 					Style:    discordgo.DangerButton,
 					CustomID: DeleteButtonID,
 					Emoji:    discordgo.ComponentEmoji{Name: "🗑️"},
@@ -219,7 +219,7 @@ func buildLightweightBookmark(msg *discordgo.Message, channelName, jumpURL strin
 }
 
 func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, color int, schedule *reminders.Schedule) *discordgo.MessageSend {
-	infoEmbed := buildInfoEmbed("📌 完全保存", msg, channelName, jumpURL, color, true, schedule)
+	infoEmbed := buildInfoEmbed("📌 Full Save", msg, channelName, jumpURL, color, true, schedule)
 
 	embeds := []*discordgo.MessageEmbed{infoEmbed}
 	for _, e := range msg.Embeds {
@@ -233,7 +233,7 @@ func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 	buttons := []discordgo.MessageComponent{
 		discordgo.Button{
 			Style: discordgo.LinkButton,
-			Label: "元メッセージ",
+			Label: "🔗 Source",
 			URL:   jumpURL,
 			Emoji: discordgo.ComponentEmoji{Name: "🔗"},
 		},
@@ -241,7 +241,7 @@ func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 
 	if schedule != nil {
 		buttons = append(buttons, discordgo.Button{
-			Label:    "完了",
+			Label:    "Done",
 			Style:    discordgo.SuccessButton,
 			CustomID: CompleteButtonID,
 			Emoji:    discordgo.ComponentEmoji{Name: "✅"},
@@ -249,7 +249,7 @@ func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 	}
 
 	buttons = append(buttons, discordgo.Button{
-		Label:    "削除",
+		Label:    "Remove",
 		Style:    discordgo.DangerButton,
 		CustomID: DeleteButtonID,
 		Emoji:    discordgo.ComponentEmoji{Name: "🗑️"},
@@ -264,7 +264,7 @@ func buildCompleteBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 }
 
 func buildBalancedBookmark(msg *discordgo.Message, channelName, jumpURL string, color int, schedule *reminders.Schedule) *discordgo.MessageSend {
-	infoEmbed := buildInfoEmbed("🔖 ブックマーク", msg, channelName, jumpURL, color, false, schedule)
+	infoEmbed := buildInfoEmbed("🔖 Smart Save", msg, channelName, jumpURL, color, false, schedule)
 
 	embeds := []*discordgo.MessageEmbed{infoEmbed}
 	if len(msg.Embeds) == 1 && msg.Embeds[0] != nil {
@@ -275,7 +275,7 @@ func buildBalancedBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 
 	if schedule != nil {
 		buttons = append(buttons, discordgo.Button{
-			Label:    "完了",
+			Label:    "Done",
 			Style:    discordgo.SuccessButton,
 			CustomID: CompleteButtonID,
 			Emoji:    discordgo.ComponentEmoji{Name: "✅"},
@@ -283,7 +283,7 @@ func buildBalancedBookmark(msg *discordgo.Message, channelName, jumpURL string, 
 	}
 
 	buttons = append(buttons, discordgo.Button{
-		Label:    "削除",
+		Label:    "Remove",
 		Style:    discordgo.DangerButton,
 		CustomID: DeleteButtonID,
 		Emoji:    discordgo.ComponentEmoji{Name: "🗑️"},
@@ -303,17 +303,17 @@ func buildInfoEmbed(title string, msg *discordgo.Message, channelName, jumpURL s
 		Color: color,
 		Fields: []*discordgo.MessageEmbedField{
 			{
-				Name:   "投稿者",
+				Name:   "🙋 Author",
 				Value:  msg.Author.String(),
 				Inline: true,
 			},
 			{
-				Name:   "チャンネル",
+				Name:   "📺 Channel",
 				Value:  fmt.Sprintf("#%s", channelName),
 				Inline: true,
 			},
 			{
-				Name:   "投稿日",
+				Name:   "🕓 Posted",
 				Value:  msg.Timestamp.Format("2006-01-02 15:04"),
 				Inline: true,
 			},
@@ -322,7 +322,7 @@ func buildInfoEmbed(title string, msg *discordgo.Message, channelName, jumpURL s
 
 	if schedule != nil {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:   "リマインド",
+			Name:   "⏰ Reminder",
 			Value:  schedule.Description,
 			Inline: true,
 		})
@@ -334,8 +334,8 @@ func buildInfoEmbed(title string, msg *discordgo.Message, channelName, jumpURL s
 
 	if jumpURL != "" {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "元メッセージ",
-			Value: fmt.Sprintf("[Jump](%s)", jumpURL),
+			Name:  "🔗 Source Message",
+			Value: fmt.Sprintf("[Open](%s)", jumpURL),
 		})
 	}
 
@@ -372,11 +372,11 @@ func buildAttachmentField(attachments []*discordgo.MessageAttachment, includeAll
 
 	if !includeAll && len(attachments) > limit {
 		remaining := len(attachments) - limit
-		entries = append(entries, fmt.Sprintf("ほか%d件", remaining))
+		entries = append(entries, fmt.Sprintf("… +%d more", remaining))
 	}
 
 	return &discordgo.MessageEmbedField{
-		Name:  "添付ファイル",
+		Name:  "🖇️ Attachments",
 		Value: strings.Join(entries, "\n"),
 	}
 }

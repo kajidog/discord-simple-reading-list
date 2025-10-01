@@ -163,7 +163,7 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 
 		if parsedReminder == nil {
 			if keepProvided {
-				return fmt.Errorf("リマインドを削除する場合は keep-reminder-on-complete オプションは使用できません")
+				return fmt.Errorf("keep-reminder-on-complete cannot be used when removing a reminder")
 			}
 			reminderPref = nil
 		} else {
@@ -178,7 +178,7 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 		}
 	} else if keepProvided {
 		if reminderPref == nil {
-			return fmt.Errorf("リマインドが設定されていないため keep-reminder-on-complete を変更できません。reminder オプションを設定してください。")
+			return fmt.Errorf("there is no reminder to update. Set the reminder option first.")
 		}
 		reminderPref.RemoveOnComplete = !keepReminder
 	}
@@ -208,9 +208,9 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 	}
 	if reminderPref != nil {
 		if reminderPref.RemoveOnComplete {
-			response += " 完了ボタンでリマインドも削除されます。"
+			response += " ✅ The Done button will clear the reminder."
 		} else {
-			response += " 完了ボタンを押してもリマインドは残ります。"
+			response += " 🔁 The reminder stays active after Done."
 		}
 	}
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
