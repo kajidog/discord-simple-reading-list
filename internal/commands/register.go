@@ -156,11 +156,6 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 		return fmt.Errorf("unable to understand the provided emoji")
 	}
 
-	color, hasColor, err := parseColor(rawColor)
-	if err != nil {
-		return err
-	}
-
 	mode := store.BookmarkMode(strings.ToLower(rawMode))
 	switch mode {
 	case store.ModeLightweight, store.ModeBalanced, store.ModeComplete:
@@ -177,6 +172,11 @@ func (c *SetBookmarkCommand) Handle(s *discordgo.Session, i *discordgo.Interacti
 	}
 
 	existingPref, hasExisting := c.store.GetEmoji(user.ID, normalized)
+
+	color, hasColor, err := resolveColor(rawColor, existingPref, hasExisting)
+	if err != nil {
+		return err
+	}
 
 	var reminderPref *reminders.Preference
 	if hasExisting && existingPref.Reminder != nil {
@@ -371,4 +371,17 @@ func parseColor(value string) (int, bool, error) {
 	}
 
 	return int(parsed), true, nil
+}
+
+func resolveColor(rawColor string, existing store.EmojiPreference, hasExisting bool) (int, bool, error) {
+	color, hasColor, err := parseColor(rawColor)
+	if err != nil {
+		return 0, false, err
+	}
+
+	if !hasColor && rawColor == "" && hasExisting && existing.HasColor {
+		return existing.Color, true, nil
+	}
+
+	return color, hasColor, nil
 }
