@@ -6,3 +6,8 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - BOOKMARK_STORE_PATH=/app/data/bookmarks.json
+      - REMINDER_STORE_PATH=/app/data/reminders.json

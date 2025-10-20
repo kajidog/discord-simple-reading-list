@@ -1,6 +1,6 @@
 module github.com/example/discord-bookmark-manager
 
-go 1.24.3
+go 1.22
 
 require github.com/bwmarrin/discordgo v0.27.1
 

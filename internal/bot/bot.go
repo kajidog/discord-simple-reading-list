@@ -131,23 +131,28 @@ func (b *Bot) registerCommands() error {
 func (b *Bot) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
+		var err error
 		switch i.ApplicationCommandData().Name {
 		case commands.SetBookmarkCommandName:
-			if err := b.registerCmd.Handle(s, i); err != nil {
-				log.Printf("failed to handle register command: %v", err)
-			}
+			err = b.registerCmd.Handle(s, i)
 		case commands.RemoveBookmarkCommandName:
-			if err := b.removeCmd.Handle(s, i); err != nil {
-				log.Printf("failed to handle remove command: %v", err)
-			}
+			err = b.removeCmd.Handle(s, i)
 		case commands.ListBookmarksCommandName:
-			if err := b.listCmd.Handle(s, i); err != nil {
-				log.Printf("failed to handle list command: %v", err)
-			}
+			err = b.listCmd.Handle(s, i)
 		case commands.HelpCommandName:
-			if err := b.helpCmd.Handle(s, i); err != nil {
-				log.Printf("failed to handle help command: %v", err)
-			}
+			err = b.helpCmd.Handle(s, i)
+		}
+
+		if err != nil {
+			log.Printf("command error: %v", err)
+			// Try to send error message to user
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "❌ Error: " + err.Error(),
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
 		}
 	case discordgo.InteractionMessageComponent:
 		if b.componentHandle != nil {

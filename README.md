@@ -45,7 +45,10 @@ docker compose up --build
 2. `/list-bookmarks` shows the emojis you have configured and their associated modes and colors.
 3. `/bookmark-help` provides a quick reference for the available commands and how to use them.
 4. Reacting with any registered emoji forwards the message to your DMs or selected channel using the configured mode (lightweight, balanced, or complete).
-5. Saved messages include mode-specific action buttons such as ✅ Done, 🗑️ Remove, and 🔗 Source.
+5. Saved messages include action buttons:
+   - **✅ Done** — Marks the bookmark as complete (dims the message, adds ✅ to title, removes buttons). The reminder is removed by default unless `keep-reminder-on-complete:true` was set.
+   - **🗑️ Remove** — Completely deletes the bookmark message and cancels any associated reminder.
+   - **🔗 Source** — Link button to jump to the original message (Complete mode only).
 
 The bot registers the slash command automatically when it starts, so no additional registration command is required.
 

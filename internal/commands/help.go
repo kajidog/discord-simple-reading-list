@@ -27,14 +27,20 @@ func (c *HelpCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 		return nil
 	}
 
-	helpText := "🛠️ Bookmark bot quick guide:\n" +
-		"• `/set-bookmark emoji:😊 mode:lightweight color:#FFD700` — Assign a save mode and embed color to an emoji.\n" +
-		"• `/set-bookmark emoji:⏰ mode:lightweight reminder:8:00` — Add a reminder time or duration like `30m`.\n" +
-		"  Keep the reminder after tapping Done with `keep-reminder-on-complete:true`.\n" +
-		"• `/list-bookmarks` — Review every emoji shortcut you've saved.\n" +
-		"• `/remove-bookmark emoji:😊` — Delete an emoji shortcut you no longer need.\n" +
-		"React with a saved emoji to receive the bookmark in your DMs or the channel you picked.\n" +
-		"Reminders always arrive in your DMs so you won't miss them."
+	helpText := "🛠️ Bookmark bot quick guide:\n\n" +
+		"**Basic usage:**\n" +
+		"• `/set-bookmark` — Set up an emoji with a bookmark mode\n" +
+		"  - Choose emoji, mode (Lightweight/Balanced/Complete), and optional color\n" +
+		"  - Example: Select mode \"👀 Lightweight\" and enter color `#FFD700`\n\n" +
+		"**With reminders:**\n" +
+		"• Add `reminder` option with time like `8:00` or duration like `30m`\n" +
+		"• Use `keep-reminder-on-complete` if you want reminders to persist after marking Done\n\n" +
+		"**Send to channel:**\n" +
+		"• Set `destination` to \"# Channel\" and select a `destination-channel`\n\n" +
+		"**Other commands:**\n" +
+		"• `/list-bookmarks` — View all your configured emojis\n" +
+		"• `/remove-bookmark` — Delete an emoji configuration\n\n" +
+		"React with a saved emoji to bookmark messages. Reminders always arrive in your DMs."
 
 	return respondEphemeral(s, i, helpText)
 }

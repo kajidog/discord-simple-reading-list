@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-bullseye AS builder
+FROM golang:1.22-bullseye AS builder
 
 WORKDIR /app
 
@@ -19,8 +19,12 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Create a non-root user and set proper permissions
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
 COPY --from=builder /bot /usr/local/bin/bot
 
-USER nobody
+USER appuser
 
 ENTRYPOINT ["/usr/local/bin/bot"]

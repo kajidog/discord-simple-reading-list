@@ -42,9 +42,9 @@ func (c *SetBookmarkCommand) Definition() *discordgo.ApplicationCommand {
 				Description: "Save mode: lightweight, balanced, or complete",
 				Required:    true,
 				Choices: []*discordgo.ApplicationCommandOptionChoice{
-					{Name: "👀 Lightweight", Value: string(store.ModeLightweight)},
-					{Name: "🔖 Balanced", Value: string(store.ModeBalanced)},
-					{Name: "📌 Complete", Value: string(store.ModeComplete)},
+					{Name: "Lightweight", Value: string(store.ModeLightweight)},
+					{Name: "Balanced", Value: string(store.ModeBalanced)},
+					{Name: "Complete", Value: string(store.ModeComplete)},
 				},
 			},
 			{
@@ -53,8 +53,8 @@ func (c *SetBookmarkCommand) Definition() *discordgo.ApplicationCommand {
 				Description: "Where to send saved bookmarks: dm or channel",
 				Required:    false,
 				Choices: []*discordgo.ApplicationCommandOptionChoice{
-					{Name: "📬 Direct Message", Value: string(store.DestinationDM)},
-					{Name: "#️⃣ Channel", Value: string(store.DestinationChannel)},
+					{Name: "Direct Message", Value: string(store.DestinationDM)},
+					{Name: "Channel", Value: string(store.DestinationChannel)},
 				},
 			},
 			{
@@ -331,26 +331,6 @@ func splitEmojiInput(raw string) []string {
 	return result
 }
 
-func normalizeEmojis(values []string) []string {
-	seen := make(map[string]struct{})
-	var normalized []string
-
-	for _, value := range values {
-		emoji := normalizeEmoji(value)
-		if emoji == "" {
-			continue
-		}
-
-		if _, ok := seen[emoji]; ok {
-			continue
-		}
-
-		seen[emoji] = struct{}{}
-		normalized = append(normalized, emoji)
-	}
-
-	return normalized
-}
 
 func parseColor(value string) (int, bool, error) {
 	if value == "" {
